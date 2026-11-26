@@ -36,7 +36,6 @@ def ensure_broker_and_topic() -> dict:
             try:
                 fut.result()
             except KafkaException as exc:
-                # Another process may have created it between the check and the call.
                 if "TOPIC_ALREADY_EXISTS" not in str(exc):
                     raise BrokerUnavailable(f"Could not create topic {topic}: {exc}") from None
         metadata = admin.list_topics(timeout=10)

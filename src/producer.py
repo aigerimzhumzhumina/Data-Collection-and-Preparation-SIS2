@@ -85,7 +85,7 @@ def run(include_test_records: bool = True) -> dict:
     producer = Producer({
         "bootstrap.servers": SETTINGS.kafka_bootstrap,
         "acks": "all",
-        "enable.idempotence": True,  # retries cannot create duplicates
+        "enable.idempotence": True,  
         "linger.ms": 20,
         "compression.type": "gzip",
         "error_cb": lambda err: log.error("Kafka error: %s", err),
@@ -94,7 +94,7 @@ def run(include_test_records: bool = True) -> dict:
     serialization_errors = 0
     for rec in records:
         try:
-            value = json.dumps(rec, ensure_ascii=False).encode("utf-8")  # JSON serialisation
+            value = json.dumps(rec, ensure_ascii=False).encode("utf-8")  
         except (TypeError, ValueError) as exc:
             serialization_errors += 1
             log.error("Cannot serialise %s: %s", rec.get("symbol"), exc)
@@ -106,7 +106,7 @@ def run(include_test_records: bool = True) -> dict:
                     headers=[("run_id", run_id.encode())], on_delivery=on_delivery,
                 )
                 break
-            except BufferError:  # local queue full -> serve callbacks and retry
+            except BufferError:  
                 producer.poll(0.5)
             except KafkaException as exc:
                 stats["failed"] += 1

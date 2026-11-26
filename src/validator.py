@@ -75,7 +75,7 @@ def build_schema(allowed_symbols: list[str]) -> pa.DataFrameSchema:
         ],
         unique=["symbol", "date"],
         report_duplicates="exclude_first",
-        strict=False,  # extra columns (change, vwap, is_test_record, ...) are allowed
+        strict=False,  
     )
 
 
@@ -87,8 +87,7 @@ def validate(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     df = df.reset_index(drop=True)
 
-    # R1 (data types): a non-numeric cell such as "abc" must reject only its own row. We detect them per cell
-    # and then give Pandera a numeric view of the data (non-numeric cells -> NaN).
+    
     numeric_view = df.copy()
     type_errors: dict[int, list[str]] = {}
     for col in PRICE_COLS + ["volume"]:
@@ -99,21 +98,19 @@ def validate(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     schema = build_schema(list(COMPANIES))
     try:
-        schema.validate(numeric_view, lazy=True)  # lazy -> collect *all* failures instead of stopping at the first
+        schema.validate(numeric_view, lazy=True)  
         failures = pd.DataFrame(columns=["index", "column", "check", "failure_case"])
     except pa.errors.SchemaErrors as exc:
         failures = exc.failure_cases
 
     row_failures = failures[failures["index"].notna()].copy()
     if len(failures) != len(row_failures):
-        # Schema-level problem (e.g. column missing entirely) - cannot be attributed to rows.
         raise ValueError(f"Schema-level validation failure:\n{failures[failures['index'].isna()]}")
 
     row_failures["index"] = row_failures["index"].astype(int)
     row_failures["detail"] = [_describe(c, k) for c, k in zip(row_failures["column"], row_failures["check"].astype(str))]
     errors: dict[int, set] = {i: set(v) for i, v in type_errors.items()}
     for idx, detail in zip(row_failures["index"], row_failures["detail"]):
-        # a cell already reported as "wrong type" is NaN in the numeric view - do not also report it as "missing"
         if detail.startswith("R2 missing value in") and any(detail.split("'")[1] in t for t in type_errors.get(idx, [])):
             continue
         errors.setdefault(int(idx), set()).add(detail)
@@ -138,7 +135,6 @@ def run() -> dict:
 
     valid_df, invalid_df = validate(df)
 
-    # Test records must never reach the final dataset, even if (by mistake) they passed validation.
     leaked_tests = valid_df["is_test_record"].sum()
     if leaked_tests:
         log.error("%d test records passed validation - the schema is too weak", leaked_tests)

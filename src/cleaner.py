@@ -23,16 +23,14 @@ from .report import update_stage
 log = logging.getLogger("cleaner")
 
 TRADING_DAYS = 252
-ROLL = 20                      # rolling window (trading days) for relative volume and realised volatility
-SPLIT_SUSPECT_LOG_RETURN = 0.35  # |log return| above this is treated as a data artefact (e.g. unadjusted stock split)
+ROLL = 20                      
+SPLIT_SUSPECT_LOG_RETURN = 0.35  
 
 
 def clean(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     stats: dict = {"input_rows": len(df)}
 
-    # --- 1. Missing values -------------------------------------------------------------------------------
-    # Required fields were already guaranteed by Pandera. The optional FMP columns (change, changePercent,
-    # vwap) can still be missing - they are re-derived from the OHLC data instead of dropping the row.
+    
     for col in ("change", "changePercent", "vwap"):
         if col not in df.columns:
             df[col] = np.nan
@@ -42,42 +40,36 @@ def clean(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     df["vwap"] = df["vwap"].fillna((df["high"] + df["low"] + df["close"]) / 3)
     stats["missing_after"] = {c: int(n) for c, n in df.isna().sum().items() if n}
 
-    # --- 2. Duplicates -----------------------------------------------------------------------------------
-    # Kafka delivers at-least-once; a replay would create exact duplicates of (symbol, date).
+    
     before = len(df)
     df = df.drop_duplicates(subset=["symbol", "date"], keep="last")
     stats["duplicates_removed"] = before - len(df)
 
-    # --- 3. Data types -----------------------------------------------------------------------------------
     df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
     for col in ("open", "high", "low", "close", "vwap", "change", "changePercent"):
         df[col] = df[col].astype("float64")
     df["volume"] = df["volume"].astype("int64")
 
-    # --- 4. Text normalisation ---------------------------------------------------------------------------
     df["symbol"] = df["symbol"].astype(str).str.strip().str.upper()
     df["company_name"] = df["symbol"].map(lambda s: COMPANIES[s][0])
     df["sector"] = df["symbol"].map(lambda s: COMPANIES[s][1])
 
-    # --- 5. Filtering with multiple conditions --------------------------------------------------------------
-    # Remove rows that are economically meaningless for a volume/volatility study (no trading, broken prices).
+ 
     before = len(df)
     keep = (df["volume"] > 0) & (df["close"] > 0) & (df["high"] >= df["low"]) & (df["date"].dt.dayofweek < 5)
     df = df[keep].sort_values(["symbol", "date"]).reset_index(drop=True)
     stats["filtered_out"] = before - len(df)
 
-    # --- 6. NumPy feature engineering (per ticker, so that one stock never leaks into another) -------------
     g = df.groupby("symbol", sort=False)
     prev_close = g["close"].shift(1)
-    df["log_return"] = np.log(df["close"] / prev_close)                         # daily log return
+    df["log_return"] = np.log(df["close"] / prev_close)                         
     suspect = df["log_return"].abs() > SPLIT_SUSPECT_LOG_RETURN
-    df.loc[suspect, "log_return"] = np.nan                                       # unreliable (split / bad tick)
+    df.loc[suspect, "log_return"] = np.nan                                       
     stats["split_suspect_returns_nulled"] = int(suspect.sum())
-    df["abs_return"] = np.abs(df["log_return"]) * 100                            # volatility proxy 1 (%)
-    df["intraday_range_pct"] = (df["high"] - df["low"]) / df["close"] * 100     # volatility proxy 2 (%)
+    df["abs_return"] = np.abs(df["log_return"]) * 100                            
+    df["intraday_range_pct"] = (df["high"] - df["low"]) / df["close"] * 100     
     df["log_volume"] = np.log(df["volume"].to_numpy(dtype="float64"))
-    # Relative volume = today's volume / mean volume of the previous 20 days. It removes the very different
-    # volume levels of the five stocks and the effect of stock splits on the raw share count.
+    
     avg_prev_volume = g["volume"].transform(lambda s: s.shift(1).rolling(ROLL, min_periods=ROLL).mean())
     df["rel_volume"] = df["volume"] / avg_prev_volume
     df["log_rel_volume"] = np.log(df["rel_volume"].to_numpy(dtype="float64"))

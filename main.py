@@ -47,7 +47,7 @@ def main() -> int:
 
     stages = STAGES if args.stage == "all" else [args.stage]
     if args.stage == "all":
-        reset_report()  # fresh counters for a fresh end-to-end run
+        reset_report()  
         if args.skip_collect:
             stages = [s for s in stages if s != "collect"]
             import pandas as pd
@@ -63,7 +63,7 @@ def main() -> int:
         except BrokerUnavailable as exc:
             logging.error("%s", exc)
             return 2
-        except Exception as exc:  # keep the traceback short but make the failing stage obvious
+        except Exception as exc:  
             logging.error("Stage '%s' failed: %s", name, exc)
             return 1
         print(f"[{name}] finished in {time.time() - started:.1f}s")

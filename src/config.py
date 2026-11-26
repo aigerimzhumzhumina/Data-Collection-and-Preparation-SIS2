@@ -14,7 +14,6 @@ DATA_DIR = ROOT_DIR / "data"
 FIGURES_DIR = ROOT_DIR / "figures"
 DOCS_DIR = ROOT_DIR / "docs"
 
-# Ticker -> (company name, sector). Used for text normalisation and the `symbols` table.
 COMPANIES = {
     "AAPL": ("Apple Inc.", "Technology"),
     "MSFT": ("Microsoft Corporation", "Technology"),
@@ -25,13 +24,11 @@ COMPANIES = {
 
 
 def _default_start() -> str:
-    # 3 years of history keeps us inside the FMP free-plan history window.
     return (date.today() - timedelta(days=3 * 365)).isoformat()
 
 
 @dataclass(frozen=True)
 class Settings:
-    # --- API ---
     fmp_api_key: str = os.getenv("FMP_API_KEY", "")
     fmp_base_url: str = os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com/stable")
     symbols: tuple = tuple(s.strip().upper() for s in os.getenv("SYMBOLS", ",".join(COMPANIES)).split(",") if s.strip())
@@ -40,14 +37,12 @@ class Settings:
     request_timeout: int = int(os.getenv("REQUEST_TIMEOUT", "30"))
     request_retries: int = int(os.getenv("REQUEST_RETRIES", "4"))
 
-    # --- Kafka ---
     kafka_bootstrap: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
     kafka_topic: str = os.getenv("KAFKA_TOPIC", "stock_prices")
     kafka_partitions: int = int(os.getenv("KAFKA_PARTITIONS", "3"))
-    consumer_idle_timeout: int = int(os.getenv("CONSUMER_IDLE_TIMEOUT", "30"))  # seconds without messages -> stop
-    consumer_max_runtime: int = int(os.getenv("CONSUMER_MAX_RUNTIME", "300"))  # hard upper bound, seconds
+    consumer_idle_timeout: int = int(os.getenv("CONSUMER_IDLE_TIMEOUT", "30"))  
+    consumer_max_runtime: int = int(os.getenv("CONSUMER_MAX_RUNTIME", "300")) 
 
-    # --- Files ---
     raw_csv: Path = DATA_DIR / "raw_data.csv"
     manifest_json: Path = DATA_DIR / "kafka_manifest.json"
     consumed_jsonl: Path = DATA_DIR / "consumed_data.jsonl"

@@ -14,15 +14,15 @@ import sys
 
 import matplotlib
 
-matplotlib.use("Agg")  # no GUI needed
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
-import seaborn as sns  # noqa: E402
-from scipy import stats  # noqa: E402
+matplotlib.use("Agg")  
+import matplotlib.pyplot as plt  
+import numpy as np  
+import pandas as pd  
+import seaborn as sns 
+from scipy import stats  
 
-from .config import DATA_DIR, DOCS_DIR, FIGURES_DIR, SETTINGS, ensure_dirs  # noqa: E402
-from .report import update_stage  # noqa: E402
+from .config import DATA_DIR, DOCS_DIR, FIGURES_DIR, SETTINGS, ensure_dirs  
+from .report import update_stage 
 
 log = logging.getLogger("analysis")
 sns.set_theme(style="whitegrid", context="notebook")
@@ -74,7 +74,6 @@ def quintile_table(df: pd.DataFrame) -> pd.DataFrame:
 def make_figures(df: pd.DataFrame, corr: pd.DataFrame, lagged: pd.DataFrame, quint: pd.DataFrame) -> list[str]:
     paths = []
 
-    # Fig 1 - scatter: relative volume vs intraday range, one panel per stock
     g = sns.lmplot(data=df.dropna(subset=["log_rel_volume", "intraday_range_pct"]), x="log_rel_volume", y="intraday_range_pct",
                    col="symbol", col_wrap=3, height=3.4, scatter_kws={"alpha": 0.25, "s": 12},
                    line_kws={"color": "crimson"}, facet_kws={"sharex": False, "sharey": False})
@@ -84,7 +83,6 @@ def make_figures(df: pd.DataFrame, corr: pd.DataFrame, lagged: pd.DataFrame, qui
     p = FIGURES_DIR / "fig1_volume_vs_range_scatter.png"
     g.savefig(p, dpi=150, bbox_inches="tight"); plt.close("all"); paths.append(p.name)
 
-    # Fig 2 - correlation strength per stock
     fig, ax = plt.subplots(figsize=(9, 4.8))
     cdata = corr.melt(id_vars=["symbol", "volatility_measure"], value_vars=["pearson_r", "spearman_rho"], var_name="method", value_name="r")
     cdata["pair"] = cdata["volatility_measure"].map({"abs_return": "|return|", "intraday_range_pct": "intraday range"}) + " / " + \
@@ -96,7 +94,6 @@ def make_figures(df: pd.DataFrame, corr: pd.DataFrame, lagged: pd.DataFrame, qui
     p = FIGURES_DIR / "fig2_correlation_by_stock.png"
     fig.savefig(p, dpi=150, bbox_inches="tight"); plt.close(fig); paths.append(p.name)
 
-    # Fig 3 - volatility by volume quintile
     fig, ax = plt.subplots(figsize=(9, 4.8))
     qmean = quint.groupby(["volume_quintile", "symbol"], observed=True)["intraday_range_pct"].mean().reset_index()
     sns.lineplot(data=qmean, x="volume_quintile", y="intraday_range_pct", hue="symbol", marker="o", ax=ax)
@@ -105,7 +102,6 @@ def make_figures(df: pd.DataFrame, corr: pd.DataFrame, lagged: pd.DataFrame, qui
     p = FIGURES_DIR / "fig3_volatility_by_volume_quintile.png"
     fig.savefig(p, dpi=150, bbox_inches="tight"); plt.close(fig); paths.append(p.name)
 
-    # Fig 4 - time series of 20-day volume vs 20-day realised volatility
     symbols = sorted(df["symbol"].unique())
     fig, axes = plt.subplots(len(symbols), 1, figsize=(10, 2.6 * len(symbols)), sharex=True)
     axes = np.atleast_1d(axes)

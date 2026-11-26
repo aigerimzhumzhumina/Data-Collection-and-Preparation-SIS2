@@ -59,7 +59,6 @@ CREATE TABLE IF NOT EXISTS daily_prices (
 CREATE INDEX IF NOT EXISTS idx_daily_prices_date ON daily_prices(trade_date);
 """
 
-# DataFrame column -> table column
 COLUMN_MAP = {
     "symbol": "symbol", "date": "trade_date", "open": "open", "high": "high", "low": "low", "close": "close",
     "volume": "volume", "vwap": "vwap", "change": "price_change", "changePercent": "change_percent",
@@ -114,7 +113,7 @@ def load_dataframe(conn: sqlite3.Connection, df: pd.DataFrame) -> dict:
     symbols_before = conn.execute("SELECT COUNT(*) FROM symbols").fetchone()[0]
     changes_before = conn.total_changes
     try:
-        with conn:  # one transaction: all rows or nothing
+        with conn:  
             conn.executemany(
                 "INSERT OR IGNORE INTO symbols(symbol, company_name, sector) VALUES (?, ?, ?)",
                 [(s, n, sec) for s, (n, sec) in COMPANIES.items()],
@@ -125,7 +124,6 @@ def load_dataframe(conn: sqlite3.Connection, df: pd.DataFrame) -> dict:
     count_after = conn.execute("SELECT COUNT(*) FROM daily_prices").fetchone()[0]
     symbols_added = conn.execute("SELECT COUNT(*) FROM symbols").fetchone()[0] - symbols_before
     inserted = count_after - count_before
-    # total_changes counts inserts + real updates (an upsert whose WHERE is false changes nothing)
     updated = conn.total_changes - changes_before - inserted - symbols_added
     return {
         "rows_processed": len(rows), "rows_before": count_before, "rows_after": count_after,

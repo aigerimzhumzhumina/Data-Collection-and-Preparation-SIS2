@@ -44,13 +44,13 @@ def run() -> dict:
     info = ensure_broker_and_topic()
     manifest = _load_manifest()
     run_id = manifest.get("run_id")
-    expected = manifest.get("published")  # None when the consumer is started on its own
+    expected = manifest.get("published")  
     if run_id is None:
         log.warning("No manifest found - consuming everything in the topic until the idle timeout")
 
     consumer = Consumer({
         "bootstrap.servers": SETTINGS.kafka_bootstrap,
-        "group.id": f"stock-consumer-{uuid.uuid4().hex[:8]}",  # fresh group -> always read from the start
+        "group.id": f"stock-consumer-{uuid.uuid4().hex[:8]}", 
         "auto.offset.reset": "earliest",
         "enable.auto.commit": False,
         "enable.partition.eof": False,
@@ -90,10 +90,10 @@ def run() -> dict:
 
                 last_message = time.monotonic()
                 if run_id is not None and _header(msg, "run_id") != run_id:
-                    skipped_other_runs += 1  # leftover from an earlier pipeline run
+                    skipped_other_runs += 1  
                     continue
                 try:
-                    record = json.loads(msg.value().decode("utf-8"))  # JSON deserialisation
+                    record = json.loads(msg.value().decode("utf-8"))  
                     if not isinstance(record, dict):
                         raise ValueError("message is not a JSON object")
                 except (ValueError, UnicodeDecodeError) as exc:

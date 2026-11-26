@@ -64,7 +64,6 @@ def fetch_symbol(session: requests.Session, symbol: str) -> list[dict]:
     except ValueError:
         raise ApiError(f"{symbol}: response is not valid JSON") from None
 
-    # FMP reports some errors with HTTP 200 and a JSON object instead of a list.
     if isinstance(payload, dict):
         raise ApiError(f"{symbol}: API error: {_mask(str(payload.get('Error Message') or payload)[:200])}")
     if not isinstance(payload, list) or not payload:
@@ -89,7 +88,7 @@ def collect() -> pd.DataFrame:
             failed[symbol] = str(exc)
             continue
         for rec in records:
-            rec.setdefault("symbol", symbol)  # defensive: make sure the ticker is always present
+            rec.setdefault("symbol", symbol)  
         rows.extend(records)
         per_symbol[symbol] = len(records)
         log.info("%s: %d records", symbol, len(records))
@@ -98,7 +97,7 @@ def collect() -> pd.DataFrame:
         raise ApiError("No data collected for any symbol.")
 
     df = pd.DataFrame(rows)
-    df.to_csv(SETTINGS.raw_csv, index=False)  # preserved untouched
+    df.to_csv(SETTINGS.raw_csv, index=False)  
     log.info("Saved %d raw records -> %s", len(df), SETTINGS.raw_csv)
     update_stage("collect", {
         "total_records": len(df), "per_symbol": per_symbol, "failed_symbols": failed,
