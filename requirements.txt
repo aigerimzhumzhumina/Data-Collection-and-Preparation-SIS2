@@ -1,0 +1,9 @@
+requests>=2.31
+python-dotenv>=1.0
+confluent-kafka>=2.3
+pandas>=2.1
+numpy>=1.26
+pandera>=0.20
+scipy>=1.11
+matplotlib>=3.8
+seaborn>=0.13
