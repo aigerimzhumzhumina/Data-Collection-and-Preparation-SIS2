@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS daily_prices (
 CREATE INDEX IF NOT EXISTS idx_daily_prices_date ON daily_prices(trade_date);
 """
 
+# DataFrame column -> table column
 COLUMN_MAP = {
     "symbol": "symbol", "date": "trade_date", "open": "open", "high": "high", "low": "low", "close": "close",
     "volume": "volume", "vwap": "vwap", "change": "price_change", "changePercent": "change_percent",
@@ -113,21 +114,33 @@ def load_dataframe(conn: sqlite3.Connection, df: pd.DataFrame) -> dict:
     symbols_before = conn.execute("SELECT COUNT(*) FROM symbols").fetchone()[0]
     changes_before = conn.total_changes
     try:
-        with conn:  
+        with conn:  # one transaction: all rows or nothing
             conn.executemany(
                 "INSERT OR IGNORE INTO symbols(symbol, company_name, sector) VALUES (?, ?, ?)",
                 [(s, n, sec) for s, (n, sec) in COMPANIES.items()],
             )
             conn.executemany(UPSERT_SQL, rows)
+            count_mid = conn.execute("SELECT COUNT(*) FROM daily_prices").fetchone()[0]
+            symbols_added = conn.execute("SELECT COUNT(*) FROM symbols").fetchone()[0] - symbols_before
+            inserted = count_mid - count_before
+            # total_changes counts inserts + real updates (an upsert whose WHERE is false changes nothing)
+            updated = conn.total_changes - changes_before - inserted - symbols_added
+
+            # The database is a snapshot of the latest cleaned dataset: rows of an earlier run that are not in
+            # this dataset (e.g. a different date range) are removed, otherwise stored != cleaned.
+            conn.execute("CREATE TEMP TABLE IF NOT EXISTS incoming_keys (symbol TEXT, trade_date TEXT, PRIMARY KEY (symbol, trade_date))")
+            conn.execute("DELETE FROM incoming_keys")
+            conn.executemany("INSERT INTO incoming_keys VALUES (?, ?)", [(r[0], r[1]) for r in rows])
+            conn.execute(
+                "DELETE FROM daily_prices WHERE NOT EXISTS (SELECT 1 FROM incoming_keys k "
+                "WHERE k.symbol = daily_prices.symbol AND k.trade_date = daily_prices.trade_date)"
+            )
     except sqlite3.Error as exc:
         raise RuntimeError(f"Database load failed (transaction rolled back): {exc}") from None
     count_after = conn.execute("SELECT COUNT(*) FROM daily_prices").fetchone()[0]
-    symbols_added = conn.execute("SELECT COUNT(*) FROM symbols").fetchone()[0] - symbols_before
-    inserted = count_after - count_before
-    updated = conn.total_changes - changes_before - inserted - symbols_added
     return {
         "rows_processed": len(rows), "rows_before": count_before, "rows_after": count_after,
-        "inserted": inserted, "updated": updated,
+        "inserted": inserted, "updated": updated, "pruned_stale": count_mid - count_after,
         "checksum": table_checksum(conn),
     }
 
@@ -170,7 +183,7 @@ def run() -> dict:
         checks = run_sql_checks(conn)
         duplicates = len(checks["duplicate keys (must be empty)"])
         idempotent = (
-            second["inserted"] == 0 and second["updated"] == 0
+            second["inserted"] == 0 and second["updated"] == 0 and second["pruned_stale"] == 0
             and first["rows_after"] == second["rows_after"] and first["checksum"] == second["checksum"]
         )
         result = {
@@ -183,8 +196,8 @@ def run() -> dict:
 
     update_stage("load", result)
     print("\n=== Idempotency test ===")
-    print(f"load #1: inserted={first['inserted']} updated={first['updated']} rows={first['rows_after']}")
-    print(f"load #2: inserted={second['inserted']} updated={second['updated']} rows={second['rows_after']}")
+    print(f"load #1: inserted={first['inserted']} updated={first['updated']} removed_stale={first['pruned_stale']} rows={first['rows_after']}")
+    print(f"load #2: inserted={second['inserted']} updated={second['updated']} removed_stale={second['pruned_stale']} rows={second['rows_after']}")
     print(f"checksum equal: {first['checksum'] == second['checksum']} -> idempotent: {idempotent}")
     print(f"processed records: {len(df)} | stored records: {second['rows_after']}")
     return result

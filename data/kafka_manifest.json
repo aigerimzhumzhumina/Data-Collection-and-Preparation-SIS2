@@ -1,5 +1,5 @@
 {
-  "run_id": "c1321fa9fb0c",
+  "run_id": "fbb833c75367",
   "topic": "stock_prices",
   "attempted": 3763,
   "published": 3763,
@@ -13,5 +13,5 @@
     "partitions": 3,
     "broker_count": 1
   },
-  "finished_at": "2026-11-25T17:49:12"
+  "finished_at": "2026-11-27T10:00:37"
 }

@@ -5,6 +5,9 @@ from .config import DOCS_DIR, ensure_dirs
 from .report import load_report
 
 
+FAILED: list = []
+
+
 def build_verification() -> tuple[list[tuple[str, object, str]], bool]:
     r = load_report()
     c, p, k = r.get("collect", {}), r.get("produce", {}), r.get("consume", {})
@@ -21,15 +24,17 @@ def build_verification() -> tuple[list[tuple[str, object, str]], bool]:
         ("6. After cleaning", cl.get("output_rows"), f"valid - {cl.get('duplicates_removed')} duplicates - {cl.get('filtered_out')} filtered"),
         ("7. Stored in SQLite", ld.get("stored_records"), "must equal cleaned; second load added 0 rows"),
     ]
-    ok = all([
-        p.get("published") == (c.get("total_records") or 0) + tests,
-        k.get("consumed") == p.get("published"),
-        v.get("test_records_detected") == v.get("test_records"),
-        v.get("valid") == (k.get("consumed") or 0) - (v.get("invalid") or 0),
-        cl.get("output_rows") == ld.get("stored_records"),
-        ld.get("idempotent") is True,
-        ld.get("duplicate_keys") == 0,
-    ])
+    checks = {
+        "published = collected + test records": p.get("published") == (c.get("total_records") or 0) + tests,
+        "consumed = published": k.get("consumed") == p.get("published"),
+        "all test records detected by Pandera": v.get("test_records_detected") == v.get("test_records"),
+        "valid = consumed - invalid": v.get("valid") == (k.get("consumed") or 0) - (v.get("invalid") or 0),
+        "stored in SQLite = cleaned": cl.get("output_rows") == ld.get("stored_records"),
+        "second load changed nothing (idempotent)": ld.get("idempotent") is True,
+        "no duplicate keys": ld.get("duplicate_keys") == 0,
+    }
+    FAILED.clear(); FAILED.extend(name for name, passed in checks.items() if not passed)
+    ok = not FAILED
     return rows, bool(ok)
 
 
@@ -42,7 +47,7 @@ def run() -> bool:
     for name, value, note in rows:
         print(f"{name:{width}s} {str(value):>8s}   {note}")
         lines.append(f"| {name} | {value} | {note} |")
-    verdict = "ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED - see counts above"
+    verdict = "ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED: " + "; ".join(FAILED)
     print(f"\n{verdict}")
     lines += ["", f"**{verdict}**"]
     (DOCS_DIR / "verification_report.md").write_text("\n".join(lines), encoding="utf-8")

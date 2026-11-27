@@ -1,8 +1,8 @@
+"""Central configuration. All values can be overridden via environment variables or a .env file."""
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import date, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -14,6 +14,7 @@ DATA_DIR = ROOT_DIR / "data"
 FIGURES_DIR = ROOT_DIR / "figures"
 DOCS_DIR = ROOT_DIR / "docs"
 
+# Ticker -> (company name, sector). Used for text normalisation and the `symbols` table.
 COMPANIES = {
     "AAPL": ("Apple Inc.", "Technology"),
     "MSFT": ("Microsoft Corporation", "Technology"),
@@ -23,26 +24,31 @@ COMPANIES = {
 }
 
 
-def _default_start() -> str:
-    return (date.today() - timedelta(days=3 * 365)).isoformat()
+# Fixed default range, so that every run (any day, any machine) reproduces the same dataset and the same report.
+# Override with START_DATE / END_DATE in .env to analyse another period.
+DEFAULT_START = "2023-11-27"
+DEFAULT_END = "2026-11-24"
 
 
 @dataclass(frozen=True)
 class Settings:
+    # --- API ---
     fmp_api_key: str = os.getenv("FMP_API_KEY", "")
     fmp_base_url: str = os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com/stable")
     symbols: tuple = tuple(s.strip().upper() for s in os.getenv("SYMBOLS", ",".join(COMPANIES)).split(",") if s.strip())
-    start_date: str = os.getenv("START_DATE", _default_start())
-    end_date: str = os.getenv("END_DATE", date.today().isoformat())
+    start_date: str = os.getenv("START_DATE", DEFAULT_START)
+    end_date: str = os.getenv("END_DATE", DEFAULT_END)
     request_timeout: int = int(os.getenv("REQUEST_TIMEOUT", "30"))
     request_retries: int = int(os.getenv("REQUEST_RETRIES", "4"))
 
+    # --- Kafka ---
     kafka_bootstrap: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
     kafka_topic: str = os.getenv("KAFKA_TOPIC", "stock_prices")
     kafka_partitions: int = int(os.getenv("KAFKA_PARTITIONS", "3"))
-    consumer_idle_timeout: int = int(os.getenv("CONSUMER_IDLE_TIMEOUT", "30"))  
-    consumer_max_runtime: int = int(os.getenv("CONSUMER_MAX_RUNTIME", "300")) 
+    consumer_idle_timeout: int = int(os.getenv("CONSUMER_IDLE_TIMEOUT", "30"))  # seconds without messages -> stop
+    consumer_max_runtime: int = int(os.getenv("CONSUMER_MAX_RUNTIME", "300"))  # hard upper bound, seconds
 
+    # --- Files ---
     raw_csv: Path = DATA_DIR / "raw_data.csv"
     manifest_json: Path = DATA_DIR / "kafka_manifest.json"
     consumed_jsonl: Path = DATA_DIR / "consumed_data.jsonl"

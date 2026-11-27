@@ -117,7 +117,7 @@ Pandera rules: **R1** numeric types / whole-number volume, **R2** no missing req
 
 ## 8. Limitations
 
-* Free FMP plan limits history length and daily request count; the default range is the last 3 years.
+* Free FMP plan limits history length and daily request count; the default range is fixed (2023-11-27 to 2026-11-24, set in `src/config.py`) so that every run reproduces the same dataset; change it with `START_DATE` / `END_DATE` in `.env`. The database always mirrors the latest cleaned dataset (rows of an earlier run that are not in it are removed during loading).
 * Raw volume is not always split-adjusted. Relative volume (vs. the stock's own previous 20 days) reduces this effect, and daily moves
   above 35 % are treated as data artefacts (their return is set to NULL, counted in the report).
 * Volume and volatility are both driven by news (earnings, macro releases); the analysis shows association, not causation.

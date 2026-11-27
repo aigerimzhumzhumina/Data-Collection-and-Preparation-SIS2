@@ -1,11 +1,20 @@
 {
   "collect": {
     "total_records": 3760,
-    "note": "reused existing raw_data.csv",
-    "updated_at": "2026-11-25T17:49:11"
+    "per_symbol": {
+      "AAPL": 752,
+      "MSFT": 752,
+      "NVDA": 752,
+      "AMZN": 752,
+      "GOOGL": 752
+    },
+    "failed_symbols": {},
+    "date_from": "2023-11-27",
+    "date_to": "2026-11-24",
+    "updated_at": "2026-11-27T10:00:36"
   },
   "produce": {
-    "run_id": "c1321fa9fb0c",
+    "run_id": "fbb833c75367",
     "topic": "stock_prices",
     "attempted": 3763,
     "published": 3763,
@@ -19,16 +28,16 @@
       "partitions": 3,
       "broker_count": 1
     },
-    "finished_at": "2026-11-25T17:49:12",
-    "updated_at": "2026-11-25T17:49:12"
+    "finished_at": "2026-11-27T10:00:37",
+    "updated_at": "2026-11-27T10:00:37"
   },
   "consume": {
-    "run_id": "c1321fa9fb0c",
+    "run_id": "fbb833c75367",
     "topic": "stock_prices",
     "expected": 3763,
     "consumed": 3763,
     "malformed": 0,
-    "skipped_from_other_runs": 0,
+    "skipped_from_other_runs": 7526,
     "kafka_errors": 0,
     "stop_reason": "all expected messages consumed",
     "broker": {
@@ -37,8 +46,8 @@
       "partitions": 3,
       "broker_count": 1
     },
-    "finished_at": "2026-11-25T17:49:16",
-    "updated_at": "2026-11-25T17:49:16"
+    "finished_at": "2026-11-27T10:00:37",
+    "updated_at": "2026-11-27T10:00:37"
   },
   "validate": {
     "received": 3763,
@@ -48,7 +57,7 @@
     "test_records_detected": 3,
     "invalid_real_records": 0,
     "invalid_handling": "rejected records are quarantined in data/invalid_records.csv and excluded from cleaning",
-    "updated_at": "2026-11-25T17:49:16"
+    "updated_at": "2026-11-27T10:00:37"
   },
   "clean": {
     "input_rows": 3760,
@@ -63,18 +72,19 @@
       37,
       6
     ],
-    "updated_at": "2026-11-25T17:49:16"
+    "updated_at": "2026-11-27T10:00:38"
   },
   "load": {
     "processed_records": 3760,
     "stored_records": 3760,
     "first_load": {
       "rows_processed": 3760,
-      "rows_before": 0,
+      "rows_before": 3765,
       "rows_after": 3760,
-      "inserted": 3760,
-      "updated": 0,
-      "checksum": "3dfa0ea651738b67189345928a1219882a8c3ff2fa3a944b226f9c4031f25d7f"
+      "inserted": 0,
+      "updated": 3756,
+      "pruned_stale": 5,
+      "checksum": "2fb09a7d7175ebd0e1047d558f2dd163fdde49cc0526128e2a61d07347482d99"
     },
     "second_load": {
       "rows_processed": 3760,
@@ -82,12 +92,13 @@
       "rows_after": 3760,
       "inserted": 0,
       "updated": 0,
-      "checksum": "3dfa0ea651738b67189345928a1219882a8c3ff2fa3a944b226f9c4031f25d7f"
+      "pruned_stale": 0,
+      "checksum": "2fb09a7d7175ebd0e1047d558f2dd163fdde49cc0526128e2a61d07347482d99"
     },
     "duplicate_keys": 0,
     "idempotent": true,
     "db_path": "/Users/aigerim/Documents/Data Collection and Preparation/SIS2/project/data/output.db",
-    "updated_at": "2026-11-25T17:49:17"
+    "updated_at": "2026-11-27T10:00:38"
   },
   "analysis": {
     "rows_analysed": 3760,
@@ -99,6 +110,6 @@
       "fig5_lead_lag_heatmap.png"
     ],
     "findings_file": "docs/eda_findings.md",
-    "updated_at": "2026-11-25T17:49:19"
+    "updated_at": "2026-11-27T10:00:39"
   }
 }
